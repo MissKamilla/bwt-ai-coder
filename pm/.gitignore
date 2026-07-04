@@ -181,3 +181,12 @@ backend/data/
 *.db-wal
 *.db-shm
 
+# Built frontend static export (created by `npm run build` in frontend/)
+frontend/out/
+# Backend static served by FastAPI — populated by Dockerfile COPY or local build
+backend/static/
+
+# Playwright e2e artifacts (created by `npx playwright test`)
+frontend/test-results/
+frontend/playwright-report/
+
