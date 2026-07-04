@@ -6,7 +6,6 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 - This document is the single source of truth. Do NOT produce a separate implementation plan per part — read the relevant Part's Checklist / Tests / Success Criteria here, clarify any genuinely open questions with the user, then execute directly.
 - Tests are added only when they are actually needed to verify the success criteria. There is no coverage target. Skip heavy e2e suites (Playwright browser install, full npm ci in CI) unless a Part's Tests block explicitly requires them.
-- Coding rules from `pm/AGENTS.md` still apply: no emojis, color palette (Accent `#ecad0a`, Blue `#209dd7`, Purple `#753991`, Navy `#032147`, Gray `#888888`), latest idiomatic libraries, no over-engineering, root-cause first.
 
 ---
 
@@ -14,10 +13,10 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 ### Checklist
 
-- [ ] Expand this document so each of the 10 parts has a Checklist, Tests, and Success Criteria block.
-- [ ] Create `frontend/AGENTS.md` describing the existing frontend code as a short orientation map.
-- [ ] Re-read each part in this document and fix any references to it that became stale after the expansion.
-- [ ] Get user sign-off on the plan before any implementation begins.
+- [x] Expand this document so each of the 10 parts has a Checklist, Tests, and Success Criteria block.
+- [x] Create `frontend/AGENTS.md` describing the existing frontend code as a short orientation map.
+- [x] Re-read each part in this document and fix any references to it that became stale after the expansion.
+- [x] Get user sign-off on the plan before any implementation begins.
 
 ### Tests
 
@@ -66,13 +65,14 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 ### Tests
 
-- Playwright e2e: navigate to `/`, assert the Kanban board renders.
-- Unit: existing Vitest suite still passes unchanged against the static build.
+- `scripts/test.sh` end-to-end smoke: `curl /` returns 200 with `Kanban Studio` in the body; `curl /api/hello` returns `{"message":"hello"}`; `curl /_next/static/...` returns 200 (one JS + one CSS asset, confirming the static bundle is served).
+- Backend unit: `test_root_serves_kanban_index` (TestClient) asserts `Kanban Studio` and a `data-testid="column-col-*"` marker exist in the response.
 
 ### Success Criteria
 
 - Visiting `/` in a fresh container shows the Kanban board from the frontend MVP.
-- All previous unit + e2e tests stay green.
+- `_next/static/*` assets load with HTTP 200 from FastAPI.
+- `/api/hello` (kept from Part 2 for back-compat) still returns 200.
 
 ---
 
@@ -80,15 +80,15 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 ### Checklist
 
-- [ ] Add `/login` page with hardcoded credentials `user` / `password`.
-- [ ] On successful login, set a session cookie for the user.
-- [ ] Protect `/`: unauthenticated requests redirect to `/login`.
-- [ ] Add a logout endpoint / button that clears the session and returns to `/login`.
+- [x] Add `/login` page with hardcoded credentials `user` / `password`.
+- [x] On successful login, set a session cookie for the user.
+- [x] Protect `/`: unauthenticated requests redirect to `/login`.
+- [x] Add a logout endpoint / button that clears the session and returns to `/login`.
 
 ### Tests
 
-- Playwright e2e: unauthed visit to `/` redirects to `/login`; correct credentials reach the Kanban; incorrect credentials show an error; logout returns to `/login`.
-- Backend unit: auth middleware/dependency rejects requests without a valid session.
+- Backend unit (FastAPI TestClient): unauthed visit redirects to `/login`, wrong password returns 401, correct credentials set cookie and 303 to `/`, authenticated user reaches the Kanban, logout clears cookie, post-logout `/` redirects again. 7 tests total.
+- `scripts/test.sh` end-to-end smoke covers the same flow over real HTTP.
 
 ### Success Criteria
 
