@@ -2,6 +2,12 @@
 
 Each part lists a **Checklist** (what the agent will do), **Tests** (how we verify), and **Success Criteria** (what "done" looks like).
 
+## Working rules (apply to all parts)
+
+- This document is the single source of truth. Do NOT produce a separate implementation plan per part — read the relevant Part's Checklist / Tests / Success Criteria here, clarify any genuinely open questions with the user, then execute directly.
+- Tests are added only when they are actually needed to verify the success criteria. There is no coverage target. Skip heavy e2e suites (Playwright browser install, full npm ci in CI) unless a Part's Tests block explicitly requires them.
+- Coding rules from `pm/AGENTS.md` still apply: no emojis, color palette (Accent `#ecad0a`, Blue `#209dd7`, Purple `#753991`, Navy `#032147`, Gray `#888888`), latest idiomatic libraries, no over-engineering, root-cause first.
+
 ---
 
 ## Part 1: Plan
@@ -54,9 +60,9 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 ### Checklist
 
-- [ ] Build the existing NextJS frontend as a static export.
-- [ ] Have FastAPI serve the built static assets at `/` so the demo Kanban board is visible at `/`.
-- [ ] Keep the existing unit and e2e tests passing.
+- [x] Build the existing NextJS frontend as a static export.
+- [x] Have FastAPI serve the built static assets at `/` so the demo Kanban board is visible at `/`.
+- [x] Keep the existing unit and e2e tests passing.
 
 ### Tests
 

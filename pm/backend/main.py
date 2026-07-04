@@ -1,21 +1,20 @@
+from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-INDEX_HTML = """<!doctype html>
-<html lang="en">
-  <head><meta charset="utf-8"><title>PM App</title></head>
-  <body><h1>hello world</h1><p>Backend running. See <code>/api/hello</code>.</p></body>
-</html>
-"""
-
-
-@app.get("/", response_class=HTMLResponse)
-def index() -> str:
-    return INDEX_HTML
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 @app.get("/api/hello")
 def api_hello() -> dict[str, str]:
     return {"message": "hello"}
+
+
+if STATIC_DIR.is_dir():
+    # Mount the entire static export directory. html=True makes StaticFiles
+    # serve index.html for directory requests and fall back to 404.html for
+    # missing paths, which is exactly what a NextJS static export expects.
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
