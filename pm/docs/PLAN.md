@@ -1,37 +1,219 @@
 # High level steps for project
 
-Part 1: Plan
+Each part lists a **Checklist** (what the agent will do), **Tests** (how we verify), and **Success Criteria** (what "done" looks like).
 
-Enrich this document to plan out each of these parts in detail, with substeps listed out as a checklist to be checked off by the agent, and with tests and success critieria for each. Also create an AGENTS.md file inside the frontend directory that describes the existing code there. Ensure the user checks and approves the plan.
+---
 
-Part 2: Scaffolding
+## Part 1: Plan
 
-Set up the Docker infrastructure, the backend in backend/ with FastAPI, and write the start and stop scripts in the scripts/ directory. This should serve example static HTML to confirm that a 'hello world' example works running locally and also make an API call.
+### Checklist
 
-Part 3: Add in Frontend
+- [ ] Expand this document so each of the 10 parts has a Checklist, Tests, and Success Criteria block.
+- [ ] Create `frontend/AGENTS.md` describing the existing frontend code as a short orientation map.
+- [ ] Re-read each part in this document and fix any references to it that became stale after the expansion.
+- [ ] Get user sign-off on the plan before any implementation begins.
 
-Now update so that the frontend is statically built and served, so that the app has the demo Kanban board displayed at /. Comprehensive unit and integration tests.
+### Tests
 
-Part 4: Add in a fake user sign in experience
+- Manual review: every one of Parts 1–10 has non-empty Checklist, Tests, and Success Criteria sections.
+- Markdown sanity: headings remain well-formed; no orphan numbered/bullet references; ordering of the 10 parts is preserved.
 
-Now update so that on first hitting /, you need to log in with dummy credentials ("user", "password") in order to see the Kanban, and you can log out. Comprehensive tests.
+### Success Criteria
 
-Part 5: Database modeling
+- User has approved the plan.
+- `docs/PLAN.md` is the single source of truth for Parts 2–10.
+- `frontend/AGENTS.md` exists and accurately reflects today's frontend layout (Next 16.1.6 + React 19.2.3 + Tailwind 4 + @dnd-kit; Kanban components in `src/components/`; tests next to source + Playwright e2e in `tests/`).
 
-Now propose a database schema for the Kanban, saving it as JSON. Document the database approach in docs/ and get user sign off.
+---
 
-Part 6: Backend
+## Part 2: Scaffolding (Docker + FastAPI + scripts)
 
-Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
+### Checklist
 
-Part 7: Frontend + Backend
+- [x] Define Dockerfile and any compose config needed for local containerized development.
+- [x] Create backend FastAPI app in backend/ with a health endpoint and a simple API endpoint.
+- [x] Serve a minimal static HTML response at / to validate serving.
+- [x] Add scripts in scripts/ for start and stop on Mac, PC, Linux.
+- [x] Ensure uv is used as the Python package manager inside the container.
+- [x] Add minimal README notes for running locally. — kept inline in this Part 2 block instead of a separate README (per project rule "Keep README minimal" and user decision on Part 2).
 
-Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly.
+### Tests
 
-Part 8: AI connectivity
+- [x] Backend unit test for health endpoint.
+- [x] Integration test that hits / and the example API endpoint in the running container.
 
-Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
+### Success criteria
 
-Part 9: Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
+- [x] Container starts with a single command and serves both HTML at / and JSON at the API endpoint.
+- [x] Start/stop scripts work on Mac, PC, and Linux.
+- [x] Unit coverage for backend modules at or above 80%.
 
-Part 10: Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically.
+---
+
+## Part 3: Add in Frontend
+
+### Checklist
+
+- [ ] Build the existing NextJS frontend as a static export.
+- [ ] Have FastAPI serve the built static assets at `/` so the demo Kanban board is visible at `/`.
+- [ ] Keep the existing unit and e2e tests passing.
+
+### Tests
+
+- Playwright e2e: navigate to `/`, assert the Kanban board renders.
+- Unit: existing Vitest suite still passes unchanged against the static build.
+
+### Success Criteria
+
+- Visiting `/` in a fresh container shows the Kanban board from the frontend MVP.
+- All previous unit + e2e tests stay green.
+
+---
+
+## Part 4: Add in a fake user sign in experience
+
+### Checklist
+
+- [ ] Add `/login` page with hardcoded credentials `user` / `password`.
+- [ ] On successful login, set a session cookie for the user.
+- [ ] Protect `/`: unauthenticated requests redirect to `/login`.
+- [ ] Add a logout endpoint / button that clears the session and returns to `/login`.
+
+### Tests
+
+- Playwright e2e: unauthed visit to `/` redirects to `/login`; correct credentials reach the Kanban; incorrect credentials show an error; logout returns to `/login`.
+- Backend unit: auth middleware/dependency rejects requests without a valid session.
+
+### Success Criteria
+
+- Visiting `/` without a session lands on `/login`.
+- Logging in with `user`/`password` shows the Kanban.
+- Logging out returns to `/login` and clears the session.
+
+---
+
+## Part 5: Database modeling
+
+### Checklist
+
+- [ ] Propose a SQLite schema for users, boards, columns, cards, and ordering.
+- [ ] Include a JSON representation of the Kanban board shape used by the API and AI.
+- [ ] Save the schema proposal and JSON examples in docs/DATABASE.md.
+- [ ] Document rationale and migration approach in docs/.
+- [ ] Get user sign-off before implementation.
+
+### Tests
+
+- [ ] Validate the documented Kanban JSON structure with a simple unit test.
+- [ ] Validate that the proposed schema supports one board per user, fixed renameable columns, ordered cards, and drag-and-drop persistence.
+
+### Success criteria
+
+- Schema proposal is clear, simple, and approved by the user.
+- docs/DATABASE.md documents both the SQLite tables and the Kanban JSON shape.
+- The approach supports future multiple users without adding extra MVP complexity.
+
+---
+
+## Part 6: Backend API
+
+### Checklist
+
+- [ ] Add API routes to read and mutate the Kanban (boards/columns/cards) for the signed-in user.
+- [ ] Wire endpoints to the SQLite layer from Part 5.
+- [ ] Add comprehensive backend unit tests (per endpoint: success, auth failure, validation failure).
+
+### Tests
+
+- Pytest unit tests for each route: success path, missing session, invalid input.
+- Integration: `TestClient` runs an end-to-end happy-path scenario against the real SQLite file.
+
+### Success Criteria
+
+- All endpoints behave as documented in `docs/DATABASE.md` / Part 5.
+- Backend unit suite is green.
+
+---
+
+## Part 7: Frontend + Backend
+
+### Checklist
+
+- [ ] Replace the frontend's in-memory state with API calls.
+- [ ] Add optimistic UI where reasonable and refetch on conflict.
+- [ ] Verify drag-and-drop persistence, card edits, column renames all survive a page reload.
+
+### Tests
+
+- Playwright e2e: create a card via UI → reload → assert card persists.
+- Playwright e2e: rename a column, drag a card across columns, edit card text → reload → all changes persist.
+- Backend unit: still green.
+
+### Success Criteria
+
+- The Kanban is a persistent, multi-session Kanban.
+- All e2e scenarios pass against a freshly built container.
+
+---
+
+## Part 8: AI connectivity
+
+### Checklist
+
+- [ ] Add an OpenRouter client in the backend reading `OPENROUTER_API_KEY` from `.env`.
+- [ ] Use model `openai/gpt-oss-120b:free`.
+- [ ] Expose a backend endpoint or helper that performs a single AI call.
+- [ ] Add a test that sends "What is 2+2?" and asserts the response includes "4".
+
+### Tests
+
+- Backend unit test for "2+2" (skipped automatically if no `OPENROUTER_API_KEY` is present).
+- Manual: hitting the endpoint in a running container returns a sane answer.
+
+### Success Criteria
+
+- AI call succeeds against the configured model and key.
+- The "2+2" test passes when an API key is available.
+
+---
+
+## Part 9: AI with Kanban JSON + Structured Outputs
+
+### Checklist
+
+- [ ] Backend builds a request containing the user's Kanban as JSON, the user's latest message, and the conversation history.
+- [ ] Use OpenRouter Structured Outputs so the response always contains a `reply` string and an optional `board_patch` describing card/column changes.
+- [ ] Apply `board_patch` server-side and persist the updated Kanban.
+- [ ] Cover with thorough backend unit tests (stubbed OpenRouter client verifying request shape + patch application).
+
+### Tests
+
+- Backend unit: with a stubbed client, verify request payload contains Kanban JSON + history + user message.
+- Backend unit: stub a `board_patch` reply and verify the persisted board matches the patched state.
+- Backend unit: reply with no patch does not mutate the board.
+
+### Success Criteria
+
+- A user message can flow through the AI and update the Kanban via `board_patch`.
+- All backend unit tests remain green.
+
+---
+
+## Part 10: AI chat UI
+
+### Checklist
+
+- [ ] Add a chat sidebar widget to the frontend.
+- [ ] Maintain conversation history in the sidebar.
+- [ ] On each AI reply, if a `board_patch` is returned, update the UI to reflect the new Kanban (refetch or local apply).
+- [ ] Cover with Playwright e2e: typing "Add a card called X to Todo" in the sidebar produces the new card in the Kanban UI.
+
+### Tests
+
+- Playwright e2e: full AI chat → board update flow with stubbed AI backend response (or live if a key is configured).
+- Visual check: sidebar styling follows the color palette in `pm/AGENTS.md`.
+
+### Success Criteria
+
+- End-to-end: a user message in the chat updates the Kanban without a manual page refresh.
+- Existing e2e + unit suites remain green.

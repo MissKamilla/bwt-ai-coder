@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+docs
+scripts
+frontend
+test-results
+playwright-report
+.idea
+.vscode
+.DS_Store
