@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /home/kamilla/projects/bwt/ai-coder/ -name \"*.pdf\" -type f 2>/dev/null)",
+      "Read(//home/kamilla/projects/bwt/ai-coder/**)",
+      "Bash(npm --version)",
+      "Bash(curl -s -N -X POST http://localhost:3000/api/chat -H 'Content-Type: application/json' -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly one short sentence: what is Kamila currently focused on?\"}]}' --max-time 60)"
+    ]
+  }
+}
