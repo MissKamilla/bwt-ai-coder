@@ -1,20 +1,53 @@
+import json
+from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Response
+from fastapi import Depends, FastAPI, Form, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from auth import SESSION_COOKIE, decode_session, encode_session, verify_credentials
+import db
+from auth import SESSION_COOKIE, SESSION_USER, decode_session, encode_session, require_user, verify_credentials
 
 app = FastAPI()
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 
+@lru_cache(maxsize=1)
+def _ensure_db() -> None:
+    db.init_db()
+
+
 @app.get("/api/hello")
 def api_hello() -> dict[str, str]:
     return {"message": "hello"}
+
+
+@app.get("/api/board")
+def get_board(_user: str = Depends(require_user)) -> dict:
+    _ensure_db()
+    return db.load_board(SESSION_USER)
+
+
+@app.patch("/api/board")
+async def patch_board(request: Request, _user: str = Depends(require_user)) -> Response:
+    _ensure_db()
+    body = await request.json()
+    try:
+        payload = db.apply_board(SESSION_USER, body)
+    except (ValueError, TypeError) as exc:
+        return Response(
+            content=json.dumps({"error": str(exc)}),
+            status_code=400,
+            media_type="application/json",
+        )
+    return Response(
+        content=json.dumps(payload),
+        status_code=200,
+        media_type="application/json",
+    )
 
 
 @app.post("/login")
