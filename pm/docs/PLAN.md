@@ -189,10 +189,11 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 ### Checklist
 
-- [ ] Backend builds a request containing the user's Kanban as JSON, the user's latest message, and the conversation history.
-- [ ] Use OpenRouter Structured Outputs so the response always contains a `reply` string and an optional `board_patch` describing card/column changes.
-- [ ] Apply `board_patch` server-side and persist the updated Kanban.
-- [ ] Cover with thorough backend unit tests (stubbed OpenRouter client verifying request shape + patch application).
+- [x] Backend builds a request containing the user's Kanban as JSON, the user's latest message, and the conversation history.
+- [x] Use OpenRouter Structured Outputs so the response always contains a `reply` string and an optional `board_patch` describing card/column changes.
+- [x] Apply `board_patch` server-side and persist the updated Kanban.
+- [x] Cover with thorough backend unit tests (stubbed OpenRouter client verifying request shape + patch application).
+- [x] Graceful fallback in `process_message`: if the model returns malformed JSON, extract a JSON object via regex; if that also fails, treat raw output as plain `reply` (board untouched). This makes the endpoint resilient to noisy free-model responses.
 
 ### Tests
 
@@ -204,6 +205,10 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 - A user message can flow through the AI and update the Kanban via `board_patch`.
 - All backend unit tests remain green.
+
+### Notes
+
+- The free model (`openai/gpt-oss-120b:free`) is unreliable at strict Structured Outputs; sometimes it returns a valid `{reply, board_patch}`, sometimes a noisy prose reply. The graceful fallback above covers the latter case — UI Part 10 should display whatever `reply` comes back and update the board only if `board_patch` is present.
 
 ---
 

@@ -110,6 +110,61 @@ async def ai_chat(
     )
 
 
+@app.post("/api/ai/board-chat")
+async def ai_board_chat(
+    request: Request,
+    _user: str = Depends(require_user),
+) -> Response:
+    _ensure_db()
+    body = await request.json()
+    user_message = body.get("user_message")
+    history = body.get("history") or []
+    if not isinstance(user_message, str) or not user_message:
+        return Response(
+            content=json.dumps({"error": "user_message must be a non-empty string"}),
+            status_code=400,
+            media_type="application/json",
+        )
+    if not isinstance(history, list):
+        return Response(
+            content=json.dumps({"error": "history must be a list"}),
+            status_code=400,
+            media_type="application/json",
+        )
+
+    board = db.load_board(SESSION_USER)
+    try:
+        reply, new_board = ai.process_message(
+            board,
+            history,
+            user_message,
+            user_id=SESSION_USER,
+        )
+    except (ValueError, TypeError) as exc:
+        return Response(
+            content=json.dumps({"error": str(exc)}),
+            status_code=400,
+            media_type="application/json",
+        )
+    except RuntimeError as exc:
+        return Response(
+            content=json.dumps({"error": str(exc)}),
+            status_code=503,
+            media_type="application/json",
+        )
+    except httpx.HTTPError as exc:
+        return Response(
+            content=json.dumps({"error": f"upstream error: {exc}"}),
+            status_code=502,
+            media_type="application/json",
+        )
+    return Response(
+        content=json.dumps({"reply": reply, "board": new_board}),
+        status_code=200,
+        media_type="application/json",
+    )
+
+
 @app.post("/logout")
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/login", status_code=303)
