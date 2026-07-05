@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 import db
+import ai
+import httpx
 from auth import SESSION_COOKIE, SESSION_USER, decode_session, encode_session, require_user, verify_credentials
 
 app = FastAPI()
@@ -63,6 +65,49 @@ def login(username: str = Form(...), password: str = Form(...)) -> Response:
         path="/",
     )
     return response
+
+
+@app.post("/api/ai/chat")
+async def ai_chat(
+    request: Request,
+    _user: str = Depends(require_user),
+) -> Response:
+    body = await request.json()
+    messages = body.get("messages")
+    if (
+        not isinstance(messages, list)
+        or not messages
+        or not all(
+            isinstance(m, dict)
+            and isinstance(m.get("role"), str)
+            and isinstance(m.get("content"), str)
+            for m in messages
+        )
+    ):
+        return Response(
+            content=json.dumps({"error": "messages must be a non-empty list of {role, content} objects"}),
+            status_code=400,
+            media_type="application/json",
+        )
+    try:
+        reply = ai.call_ai(messages)
+    except RuntimeError as exc:
+        return Response(
+            content=json.dumps({"error": str(exc)}),
+            status_code=503,
+            media_type="application/json",
+        )
+    except httpx.HTTPError as exc:
+        return Response(
+            content=json.dumps({"error": f"upstream error: {exc}"}),
+            status_code=502,
+            media_type="application/json",
+        )
+    return Response(
+        content=json.dumps({"reply": reply}),
+        status_code=200,
+        media_type="application/json",
+    )
 
 
 @app.post("/logout")

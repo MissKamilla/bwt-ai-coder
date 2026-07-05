@@ -7,12 +7,12 @@ dependencies = [
     "uvicorn[standard]>=0.34",
     "itsdangerous>=2.2",
     "python-multipart>=0.0.20",
+    "httpx>=0.28",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4",
-    "httpx>=0.28",
 ]
 
 [tool.uv]
