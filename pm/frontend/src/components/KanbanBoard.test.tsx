@@ -64,12 +64,13 @@ describe("KanbanBoard", () => {
   });
 
   it("renames a column locally", async () => {
+    const user = userEvent.setup();
     render(<KanbanBoard />);
     await waitForBoard();
     const column = getFirstColumn();
     const input = within(column).getByLabelText("Column title");
-    await userEvent.clear(input);
-    await userEvent.type(input, "New Name");
+    await user.clear(input);
+    await user.type(input, "New Name");
     expect(input).toHaveValue("New Name");
   });
 
@@ -101,5 +102,51 @@ describe("KanbanBoard", () => {
     expect(
       within(column).queryByDisplayValue("New card")
     ).not.toBeInTheDocument();
+  });
+
+  it("saves pending board edits before sending an AI request", async () => {
+    const calls: string[] = [];
+    let persistedBoard = seededBoard;
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "/api/board" && init?.method === "PATCH") {
+          persistedBoard = JSON.parse(init.body as string) as BoardData;
+          calls.push(`save:${persistedBoard.columns[0].title}`);
+          return jsonResponse(persistedBoard);
+        }
+        if (url === "/api/board") {
+          return jsonResponse(persistedBoard);
+        }
+        if (url === "/api/ai/board-chat") {
+          calls.push("ai");
+          return jsonResponse({ reply: "Done.", board: persistedBoard });
+        }
+        throw new Error(`Unhandled fetch in test: ${url}`);
+      }
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(<KanbanBoard />);
+    await waitForBoard();
+
+    const column = getFirstColumn();
+    const titleInput = within(column).getByLabelText("Column title");
+    await user.clear(titleInput);
+    await user.type(titleInput, "Ready");
+
+    await user.type(
+      screen.getByTestId("chat-input"),
+      "Add a card after saving"
+    );
+    await user.click(screen.getByTestId("chat-send"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("chat-message-assistant")).toHaveTextContent(
+        "Done."
+      )
+    );
+    expect(calls).toEqual(["save:Ready", "ai"]);
   });
 });

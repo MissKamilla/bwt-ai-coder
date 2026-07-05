@@ -11,12 +11,13 @@ import type { BoardData } from "@/lib/kanban";
 
 type ChatSidebarProps = {
   onBoardUpdate?: (next: BoardData) => void;
+  onBeforeSend?: () => Promise<void> | void;
 };
 
 const SUGGESTION =
   "Ask the AI to add, move, rename, or delete cards. Example: 'Add a card called Smoke to Backlog'.";
 
-export const ChatSidebar = ({ onBoardUpdate }: ChatSidebarProps) => {
+export const ChatSidebar = ({ onBeforeSend, onBoardUpdate }: ChatSidebarProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -43,6 +44,7 @@ export const ChatSidebar = ({ onBoardUpdate }: ChatSidebarProps) => {
       setIsSending(true);
 
       try {
+        await onBeforeSend?.();
         const response: BoardChatResponse = await sendBoardChat(
           trimmed,
           historySnapshot
@@ -74,7 +76,7 @@ export const ChatSidebar = ({ onBoardUpdate }: ChatSidebarProps) => {
         setIsSending(false);
       }
     },
-    [input, isSending, messages, onBoardUpdate]
+    [input, isSending, messages, onBeforeSend, onBoardUpdate]
   );
 
   return (

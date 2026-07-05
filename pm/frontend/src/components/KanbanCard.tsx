@@ -11,8 +11,15 @@ type KanbanCardProps = {
 };
 
 export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: card.id });
+  const {
+    attributes,
+    listeners,
+    setActivatorNodeRef,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: card.id });
   const detailsRef = useRef<HTMLTextAreaElement | null>(null);
 
   const style = {
@@ -36,11 +43,20 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
         "transition-all duration-150",
         isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
       )}
-      {...attributes}
-      {...listeners}
       data-testid={`card-${card.id}`}
     >
       <div className="flex items-start justify-between gap-3">
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          aria-label={`Drag ${card.title}`}
+          data-testid={`drag-handle-${card.id}`}
+          className="mt-1 cursor-grab rounded border border-transparent px-1.5 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          Grip
+        </button>
         <div className="w-full">
           <input
             value={card.title}

@@ -81,6 +81,8 @@ test.describe("AI chat sidebar", () => {
 
     // And the card lands on the Backlog column without a reload.
     const backlog = page.getByTestId("column-col-backlog");
-    await expect(backlog.getByDisplayValue("AI Test Card")).toBeVisible();
+    await expect(backlog.getByLabel("Card title").last()).toHaveValue(
+      "AI Test Card"
+    );
   });
 });

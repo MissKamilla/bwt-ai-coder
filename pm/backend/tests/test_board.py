@@ -1,9 +1,8 @@
 """Tests for /api/board — Part 6."""
 
-from fastapi.testclient import TestClient
-
 import db
 from main import app
+from tests.client import TestClient
 
 from tests.seed import EXPECTED_BOARD
 

@@ -1,14 +1,15 @@
-# Frontend (working MVP, pre-Docker)
+# Frontend
 
-This directory holds the existing pure-frontend Project Management MVP. It has not yet been wired into the FastAPI / Docker setup described in `pm/AGENTS.md` and `pm/docs/PLAN.md`. State lives in React; there is no backend yet.
+This directory contains the Next.js Kanban UI. It is no longer a standalone demo:
+the app is exported as static files and served by the FastAPI backend from `/`.
 
 ## Stack
 
-- Next.js 16.1.6 (App Router, JSX/TSX)
+- Next.js 16.1.6 with App Router and static export
 - React 19.2.3
 - TypeScript 5
 - Tailwind CSS 4
-- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` for drag-and-drop
+- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` for drag and drop
 - Vitest 3 + Testing Library for unit tests
 - Playwright 1.58 for e2e tests
 
@@ -19,53 +20,44 @@ src/
   app/
     layout.tsx          root layout
     page.tsx            Kanban page
-    globals.css         global styles (Tailwind entry)
-    favicon.ico
+    login/page.tsx      static login page posted to FastAPI
+    globals.css         Tailwind entry and app CSS variables
   components/
-    KanbanBoard.tsx     board container, drag-and-drop orchestration
-    KanbanBoard.test.tsx
-    KanbanColumn.tsx    single column
-    KanbanCard.tsx      card row in a column
-    KanbanCardPreview.tsx
-    NewCardForm.tsx     add-card form (used inside a column)
+    KanbanBoard.tsx     board container, API loading/saving, drag orchestration
+    KanbanColumn.tsx    single column and rename input
+    KanbanCard.tsx      editable card row
+    NewCardForm.tsx     add-card form
+    ChatSidebar.tsx     AI chat UI
   lib/
-    kanban.ts           board state, column/card helpers
-    kanban.test.ts
+    api.ts              browser API calls to FastAPI
+    kanban.ts           board types and local move/id helpers
   test/
-    setup.ts            Vitest setup (jsdom, @testing-library/jest-dom)
-    vitest.d.ts
-public/                 static assets (svgs and favicon)
+    setup.ts            Vitest setup
 tests/
-  kanban.spec.ts        Playwright e2e
+  kanban.spec.ts        base UI e2e
+  persistence.spec.ts   API persistence e2e
+  ai-chat.spec.ts       AI sidebar e2e with a stubbed backend reply
 ```
 
-## How to run
+## How to Run
 
-From this directory only.
+From `frontend/`:
 
 - `npm install`
-- `npm run dev` — Next dev server
-- `npm run build` — production build (export target for Part 3)
-- `npm run start` — start the built app
-- `npm run test` (alias `test:unit`) — Vitest unit tests
-- `npm run test:unit:watch` — Vitest watch mode
-- `npm run test:e2e` — Playwright e2e (browsers must be installed)
-- `npm run test:all` — unit then e2e
-- `npm run lint` — ESLint
+- `npm run dev`
+- `npm run build`
+- `npm run test`
+- `npm run test:e2e`
+- `npm run lint`
+
+For the full app, prefer the root `scripts/start.sh` / `scripts/test.sh` flow so
+the static frontend is served by FastAPI like production.
 
 ## Conventions
 
-- Color palette (accent yellow, blue primary, purple secondary, dark navy, gray text) lives in `pm/AGENTS.md`. Use Tailwind utilities that map to these hexes; do not introduce new colors.
-- Components that use React state, effects, or `@dnd-kit` must start with `'use client'`.
-- Unit tests live next to the file they cover (`Foo.tsx` -> `Foo.test.tsx`). E2E tests live in `tests/`.
-- Do not add a backend or API client here; that is `backend/`'s job starting at Part 6.
-
-## What changes later (do not pre-build)
-
-- Part 2 adds `../backend/` with FastAPI and a `Dockerfile` at the repo root.
-- Part 3 turns this app into a static build served by FastAPI at `/`.
-- Part 4 wraps `/` behind a hardcoded sign-in (`user` / `password`).
-- Parts 5–7 introduce SQLite + API + persistence; the in-memory state in `src/lib/kanban.ts` will be replaced.
-- Parts 8–10 add the AI chat sidebar.
-
-Until then, keep the MVP self-contained.
+- Keep the color palette from root `AGENTS.md`.
+- Components using React state, effects, or drag and drop must start with `'use client'`.
+- Use `src/lib/api.ts` for browser calls to the backend.
+- Unit tests live next to source files. E2E tests live in `frontend/tests/`.
+- The backend owns authentication, persistence, and AI calls. The frontend should
+  treat `/api/board` and `/api/ai/board-chat` as the source of truth.

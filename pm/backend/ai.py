@@ -269,7 +269,6 @@ def process_message(
         },
     }
     raw = _openrouter_chat(messages, response_format=response_format)
-    print(f"[ai.board_chat] attempt1 raw={raw!r}", flush=True)
     reply, new_board, applied = _try_parse_and_apply(board, raw)
 
     if applied:
@@ -288,7 +287,6 @@ def process_message(
         }
     ]
     raw2 = _openrouter_chat(retry_messages, response_format=response_format)
-    print(f"[ai.board_chat] attempt2 raw={raw2!r}", flush=True)
     reply2, new_board2, applied2 = _try_parse_and_apply(board, raw2)
 
     if applied2:

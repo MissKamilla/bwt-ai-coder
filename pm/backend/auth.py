@@ -24,7 +24,7 @@ def decode_session(token: str | None) -> str | None:
         return None
 
 
-def require_user(pm_session: str | None = Cookie(default=None)) -> str:
+async def require_user(pm_session: str | None = Cookie(default=None)) -> str:
     username = decode_session(pm_session)
     if username != SESSION_USER:
         raise HTTPException(

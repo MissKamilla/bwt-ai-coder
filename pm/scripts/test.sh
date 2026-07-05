@@ -20,8 +20,8 @@ if ! docker compose ps --status running app 2>/dev/null | grep -q app; then
 fi
 
 # 2. Backend unit tests inside the container.
-docker compose exec -T app uv sync --dev >/dev/null
-docker compose exec -T app uv run pytest -v
+docker compose exec -T app uv sync --frozen --dev >/dev/null
+docker compose exec -T app uv run --frozen pytest -v
 
 # 3. End-to-end smoke test for the auth flow.
 JAR="$(mktemp)"

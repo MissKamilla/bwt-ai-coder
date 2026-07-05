@@ -1,10 +1,10 @@
 import os
 
 import pytest
-from fastapi.testclient import TestClient
 
 import ai
 from main import app
+from tests.client import TestClient
 
 client = TestClient(app)
 

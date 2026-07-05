@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -15,13 +15,17 @@ import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { createId, moveCard, type BoardData } from "@/lib/kanban";
-import { debounce, fetchBoard, saveBoard } from "@/lib/api";
+import { fetchBoard, saveBoard } from "@/lib/api";
 
 const SAVE_DELAY_MS = 300;
 
 export const KanbanBoard = () => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<BoardData | null>(null);
+  const activeSaveRef = useRef<Promise<void> | null>(null);
+  const activeSaveTokenRef = useRef<object | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -29,25 +33,65 @@ export const KanbanBoard = () => {
     })
   );
 
-  const persist = useCallback(async (next: BoardData) => {
-    try {
-      const truth = await saveBoard(next);
-      setBoard(truth);
-    } catch (err) {
-      console.error("saveBoard failed, refetching", err);
+  const persist = useCallback((next: BoardData) => {
+    const saveToken = {};
+    const save = (async () => {
       try {
-        const truth = await fetchBoard();
+        const truth = await saveBoard(next);
         setBoard(truth);
-      } catch (refetchErr) {
-        console.error("refetch also failed", refetchErr);
+      } catch (err) {
+        console.error("saveBoard failed, refetching", err);
+        try {
+          const truth = await fetchBoard();
+          setBoard(truth);
+        } catch (refetchErr) {
+          console.error("refetch also failed", refetchErr);
+        }
+      } finally {
+        if (activeSaveTokenRef.current === saveToken) {
+          activeSaveRef.current = null;
+          activeSaveTokenRef.current = null;
+        }
       }
-    }
+    })();
+    activeSaveRef.current = save;
+    activeSaveTokenRef.current = saveToken;
+    return save;
   }, []);
 
-  const scheduleSave = useMemo(
-    () => debounce((next: BoardData) => void persist(next), SAVE_DELAY_MS),
+  const scheduleSave = useCallback(
+    (next: BoardData) => {
+      pendingSaveRef.current = next;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
+        const pending = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        if (pending) {
+          void persist(pending);
+        }
+      }, SAVE_DELAY_MS);
+    },
     [persist]
   );
+
+  const flushPendingSave = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingSaveRef.current;
+    pendingSaveRef.current = null;
+    if (pending) {
+      await persist(pending);
+      return;
+    }
+    if (activeSaveRef.current) {
+      await activeSaveRef.current;
+    }
+  }, [persist]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +104,9 @@ export const KanbanBoard = () => {
       });
     return () => {
       cancelled = true;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
     };
   }, []);
 
@@ -252,7 +299,10 @@ export const KanbanBoard = () => {
           </DndContext>
         </main>
 
-        <ChatSidebar onBoardUpdate={applyBoardFromAi} />
+        <ChatSidebar
+          onBeforeSend={flushPendingSave}
+          onBoardUpdate={applyBoardFromAi}
+        />
       </div>
     </div>
   );
