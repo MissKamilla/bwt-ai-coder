@@ -216,10 +216,10 @@ Each part lists a **Checklist** (what the agent will do), **Tests** (how we veri
 
 ### Checklist
 
-- [ ] Add a chat sidebar widget to the frontend.
-- [ ] Maintain conversation history in the sidebar.
-- [ ] On each AI reply, if a `board_patch` is returned, update the UI to reflect the new Kanban (refetch or local apply).
-- [ ] Cover with Playwright e2e: typing "Add a card called X to Todo" in the sidebar produces the new card in the Kanban UI.
+- [x] Add a chat sidebar widget to the frontend.
+- [x] Maintain conversation history in the sidebar.
+- [x] On each AI reply, if a `board_patch` is returned, update the UI to reflect the new Kanban (refetch or local apply).
+- [x] Cover with Playwright e2e: typing "Add a card called X to Todo" in the sidebar produces the new card in the Kanban UI.
 
 ### Tests
 

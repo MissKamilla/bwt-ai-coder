@@ -29,6 +29,33 @@ export const saveBoard = async (board: BoardData): Promise<BoardData> => {
   return (await response.json()) as BoardData;
 };
 
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export type BoardChatResponse = {
+  reply: string;
+  board: BoardData;
+};
+
+export const sendBoardChat = async (
+  userMessage: string,
+  history: ChatMessage[]
+): Promise<BoardChatResponse> => {
+  const response = await fetch("/api/ai/board-chat", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ user_message: userMessage, history }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to chat: ${response.status} ${text}`);
+  }
+  return (await response.json()) as BoardChatResponse;
+};
+
 export const debounce = <Args extends unknown[]>(
   fn: (...args: Args) => void,
   delayMs: number

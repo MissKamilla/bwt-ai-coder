@@ -116,7 +116,11 @@ def test_board_chat_request_payload_includes_board_history_and_user(
     # History comes next, then user message.
     assert msgs[2]["content"] == "earlier turn"
     assert msgs[3]["content"] == "earlier reply"
-    assert msgs[-1]["role"] == "user" and msgs[-1]["content"] == "add card 'Foo' to Backlog"
+    # The original user message must be present in the payload (it may not be
+    # the last entry if a retry was triggered).
+    assert any(
+        m.get("content") == "add card 'Foo' to Backlog" for m in msgs
+    )
 
     # response_format forces Structured Outputs.
     rf = captured["response_format"]
@@ -192,3 +196,76 @@ def test_board_chat_with_no_patch_does_not_mutate_board(
     after = db.load_board("user", path=str(tmp_path / "app.db"))
     assert before == after
     assert r.json()["reply"] == "no changes"
+
+
+def test_board_chat_retries_when_model_returns_prose(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Free models sometimes return prose instead of JSON. We retry once with
+    a stricter reminder and accept the patched result from the retry call."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "stub-key")
+    calls: list[list[dict]] = []
+
+    def fake_chat(messages, *, response_format=None, timeout=60.0):
+        calls.append(messages)
+        if len(calls) == 1:
+            # First attempt: noisy prose, no JSON at all.
+            return "Sure thing! I went ahead and added the card for you."
+        # Retry: proper structured JSON this time.
+        return json.dumps(
+            {
+                "reply": "Added after retry.",
+                "board_patch": {
+                    "cards_add": [
+                        {
+                            "id": "card-77",
+                            "column_id": "col-backlog",
+                            "title": "Retried Card",
+                            "details": "",
+                        }
+                    ]
+                },
+            }
+        )
+
+    monkeypatch.setattr(ai, "_openrouter_chat", fake_chat)
+
+    c = _client_with_tmp_db(tmp_path, monkeypatch)
+    c.post("/login", data={"username": "user", "password": "password"}, follow_redirects=False)
+    r = c.post(
+        "/api/ai/board-chat",
+        json={"user_message": "add a card called Retried Card", "history": []},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["reply"] == "Added after retry."
+    assert "card-77" in body["board"]["cards"]
+
+    # Two calls total — the retry must carry the stricter reminder.
+    assert len(calls) == 2
+    assert "Reminder" in calls[1][-1]["content"] or "JSON" in calls[1][-1]["content"]
+
+
+def test_board_chat_falls_back_to_plain_reply_when_retry_also_fails(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If both the first attempt and the retry return prose, the original
+    reply is surfaced and the board is left alone."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "stub-key")
+
+    def fake_chat(messages, *, response_format=None, timeout=60.0):
+        return "I cannot edit the board, sorry."
+
+    monkeypatch.setattr(ai, "_openrouter_chat", fake_chat)
+
+    c = _client_with_tmp_db(tmp_path, monkeypatch)
+    c.post("/login", data={"username": "user", "password": "password"}, follow_redirects=False)
+    before = db.load_board("user", path=str(tmp_path / "app.db"))
+    r = c.post(
+        "/api/ai/board-chat",
+        json={"user_message": "do something", "history": []},
+    )
+    assert r.status_code == 200, r.text
+    after = db.load_board("user", path=str(tmp_path / "app.db"))
+    assert before == after
+    assert r.json()["reply"] == "I cannot edit the board, sorry."

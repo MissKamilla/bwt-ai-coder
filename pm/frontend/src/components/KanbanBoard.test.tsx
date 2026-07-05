@@ -30,6 +30,9 @@ const installFetchMock = (board: BoardData) => {
     if (url === "/api/board") {
       return jsonResponse(board);
     }
+    if (url === "/api/ai/board-chat") {
+      return jsonResponse({ reply: "", board });
+    }
     throw new Error(`Unhandled fetch in test: ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);

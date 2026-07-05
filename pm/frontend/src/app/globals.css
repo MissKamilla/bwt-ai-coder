@@ -32,3 +32,23 @@ body {
 .font-display {
   font-family: var(--font-display), "Segoe UI", sans-serif;
 }
+
+/* Slim, on-brand scrollbar for horizontal overflow surfaces (board / chat). */
+.scroll-soft {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(32, 157, 215, 0.45) transparent;
+}
+.scroll-soft::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scroll-soft::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-soft::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(32, 157, 215, 0.35), rgba(117, 57, 145, 0.35));
+  border-radius: 999px;
+}
+.scroll-soft::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(32, 157, 215, 0.6), rgba(117, 57, 145, 0.6));
+}

@@ -199,6 +199,41 @@ def apply_board_patch(board: dict, patch: dict | None) -> dict:
     return new_board
 
 
+def _try_parse_and_apply(
+    board: dict, raw: str
+) -> tuple[str, dict, bool]:
+    """Parse `raw` as JSON; apply any board_patch. Returns (reply, new_board, applied).
+
+    `applied` is True only when we successfully parsed JSON AND applied a patch.
+    """
+    import json
+    parsed: dict | None = None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        import re
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            try:
+                parsed = json.loads(m.group(0))
+            except json.JSONDecodeError:
+                parsed = None
+
+    if not isinstance(parsed, dict):
+        return raw, board, False
+
+    reply = parsed.get("reply") or ""
+    patch = parsed.get("board_patch") or None
+    if not patch:
+        return reply, board, False
+    try:
+        new_board = apply_board_patch(board, patch)
+    except (ValueError, TypeError):
+        # Model hallucinated a malformed patch — caller may retry.
+        return reply, board, False
+    return reply, new_board, True
+
+
 def process_message(
     board: dict,
     history: list[dict],
@@ -210,6 +245,10 @@ def process_message(
     """Send board + history + user_message to the AI; apply the returned patch.
 
     Returns (reply, new_board). Persists the new board via db.apply_board.
+
+    Free models sometimes return prose instead of structured JSON. We make one
+    retry with a stricter reminder before giving up and treating the reply
+    as plain text (board untouched).
     """
     messages: list[dict] = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -230,31 +269,33 @@ def process_message(
         },
     }
     raw = _openrouter_chat(messages, response_format=response_format)
+    print(f"[ai.board_chat] attempt1 raw={raw!r}", flush=True)
+    reply, new_board, applied = _try_parse_and_apply(board, raw)
 
-    # Parse the JSON. Some free models occasionally return noisy text; we try
-    # to extract a JSON object first and fall back to treating the raw output
-    # as a plain reply.
-    import json
-    parsed: dict | None = None
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        import re
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        if m:
-            try:
-                parsed = json.loads(m.group(0))
-            except json.JSONDecodeError:
-                parsed = None
-
-    if not isinstance(parsed, dict):
-        # Model gave us plain prose — degrade gracefully: keep the board, expose
-        # the raw text as the reply.
-        return raw, board
-
-    reply = parsed.get("reply") or ""
-    patch = parsed.get("board_patch") or None
-    new_board = apply_board_patch(board, patch) if patch else board
-    if patch:
+    if applied:
         db.apply_board(user_id, new_board, path=db_path)
-    return reply, new_board
+        return reply, new_board
+
+    # One retry with a strict reminder. Cheap, often turns noisy prose into JSON.
+    retry_messages = messages + [
+        {
+            "role": "user",
+            "content": (
+                "Reminder: respond with ONLY a single JSON object matching "
+                '{"reply": "<text>", "board_patch": <object or null>}. No prose, '
+                "no markdown fences."
+            ),
+        }
+    ]
+    raw2 = _openrouter_chat(retry_messages, response_format=response_format)
+    print(f"[ai.board_chat] attempt2 raw={raw2!r}", flush=True)
+    reply2, new_board2, applied2 = _try_parse_and_apply(board, raw2)
+
+    if applied2:
+        db.apply_board(user_id, new_board2, path=db_path)
+        return reply2, new_board2
+
+    # Graceful fallback: surface whatever the model said as plain text reply,
+    # leave the board alone. Prefer the original (more natural-sounding) reply
+    # when the retry still produced prose.
+    return reply or raw2, board
